@@ -1,0 +1,95 @@
+import { useStore } from '@/store';
+import { Knob } from './Knob';
+import { TransportButton } from './TransportButton';
+import { RoughPanel } from './RoughPanel';
+import { audioEngine } from '@/audio/AudioEngine';
+
+const PURPLE = '#9C27B0';
+
+export function GlobalControls() {
+  const { bpm, volume, filterFreq, swing } = useStore(s => ({
+    bpm: s.bpm,
+    volume: s.volume,
+    filterFreq: s.filterFreq,
+    swing: s.swing,
+  }));
+  const setBpm = useStore(s => s.setBpm);
+  const setVolume = useStore(s => s.setVolume);
+  const setFilterFreq = useStore(s => s.setFilterFreq);
+  const setSwing = useStore(s => s.setSwing);
+  const setPlaying = useStore(s => s.setPlaying);
+
+  const bpmKnob = (bpm - 60) / (200 - 60);
+
+  const handlePlay = async () => {
+    await audioEngine.start();
+    setPlaying(true);
+    audioEngine.play();
+  };
+
+  const handleStop = () => {
+    setPlaying(false);
+    audioEngine.stop();
+  };
+
+  return (
+    <RoughPanel color={PURPLE} padding={16} style={{ width: '100%', maxWidth: 900 }}>
+      <div className="global-controls">
+        <Knob
+          value={bpmKnob}
+          onChange={v => {
+            const next = Math.round(60 + v * 140);
+            setBpm(next);
+            audioEngine.setBpm(next);
+          }}
+          color={PURPLE}
+          label="BPM"
+          displayValue={`${bpm}`}
+        />
+        <Knob
+          value={volume}
+          onChange={v => {
+            setVolume(v);
+            audioEngine.setMasterVolume(v);
+          }}
+          color={PURPLE}
+          label="Volume"
+          displayValue={`${Math.round(volume * 100)}%`}
+        />
+        <Knob
+          value={filterFreq}
+          onChange={v => {
+            setFilterFreq(v);
+            audioEngine.setFilter(v);
+          }}
+          color={PURPLE}
+          label="Filter"
+          displayValue={`${Math.round(200 + filterFreq * 19800)}Hz`}
+          sensitivity={0.003}
+        />
+        <Knob
+          value={swing}
+          onChange={v => {
+            setSwing(v);
+            audioEngine.setSwing(v);
+          }}
+          color={PURPLE}
+          label="Swing"
+          displayValue={`${Math.round(swing * 100)}%`}
+        />
+        <div className="transport-group">
+          <TransportButton
+            label="▶ PLAY"
+            color={PURPLE}
+            onClick={handlePlay}
+          />
+          <TransportButton
+            label="■ STOP"
+            color="#555"
+            onClick={handleStop}
+          />
+        </div>
+      </div>
+    </RoughPanel>
+  );
+}

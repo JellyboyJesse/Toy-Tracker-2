@@ -1,0 +1,308 @@
+@import '@fontsource/schoolbell';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #FEFCF0;
+  --paper-line: #E8E4C8;
+  --text: #2a2018;
+  --muted: #9a8f72;
+  --purple: #9C27B0;
+  --t1: #4CAF50;
+  --t2: #F44336;
+  --t3: #2196F3;
+  --t4: #FFC107;
+  font-family: 'Schoolbell', cursive;
+}
+
+html, body, #root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 27px,
+      var(--paper-line) 27px,
+      var(--paper-line) 28px
+    );
+  color: var(--text);
+  font-family: 'Schoolbell', cursive;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 48px;
+  gap: 24px;
+}
+
+.crayon-text {
+  font-family: 'Schoolbell', cursive;
+  text-shadow:
+    2px 2px 0 rgba(255, 200, 100, 0.5),
+    -1px -1px 0 rgba(200, 100, 50, 0.3),
+    1px -1px 0 rgba(100, 50, 200, 0.2);
+  filter: url(#crayon-grain);
+}
+
+.rough-panel {
+  position: relative;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.rough-panel > .rough-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.knob-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.knob-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1;
+}
+
+.knob-svg {
+  cursor: ns-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.transport-btn {
+  position: relative;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: 'Schoolbell', cursive;
+  font-size: 18px;
+  user-select: none;
+  touch-action: none;
+}
+
+.transport-btn > svg {
+  display: block;
+}
+
+.transport-btn > span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.step-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  width: 100%;
+}
+
+.step-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  height: 28px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.step-cell > svg.cell-border {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.step-cell > .cell-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.step-cell input.cell-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Schoolbell', cursive;
+  font-size: 13px;
+  color: inherit;
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  position: relative;
+}
+
+.grid-col-headers {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  margin-bottom: 2px;
+}
+
+.grid-col-header {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.track-panel {
+  width: 100%;
+}
+
+.track-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.track-label {
+  font-size: 18px;
+  font-weight: bold;
+  min-width: 40px;
+}
+
+.track-knobs {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.track-body {
+  position: relative;
+}
+
+.ball-playhead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.global-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 16px;
+}
+
+.transport-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.drop-zone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.drop-zone.active {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(254, 252, 240, 0.92);
+}
+
+.bounce-dir-btn {
+  background: none;
+  border: none;
+  font-family: 'Schoolbell', cursive;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 2px 4px;
+  user-select: none;
+}
+
+.bounce-dir-btn.active {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.app-header {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+.app-title {
+  font-size: 36px;
+  letter-spacing: 2px;
+  line-height: 1.2;
+}
+
+.app-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tracker-grid {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.step-cell.active-step {
+  background: rgba(0,0,0,0.04);
+}
+
+.sample-name {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
