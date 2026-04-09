@@ -7,12 +7,10 @@ import { audioEngine } from '@/audio/AudioEngine';
 const PURPLE = '#9C27B0';
 
 export function GlobalControls() {
-  const { bpm, volume, filterFreq, swing } = useStore(s => ({
-    bpm: s.bpm,
-    volume: s.volume,
-    filterFreq: s.filterFreq,
-    swing: s.swing,
-  }));
+  const bpm = useStore(s => s.bpm);
+  const volume = useStore(s => s.volume);
+  const filterFreq = useStore(s => s.filterFreq);
+  const swing = useStore(s => s.swing);
   const setBpm = useStore(s => s.setBpm);
   const setVolume = useStore(s => s.setVolume);
   const setFilterFreq = useStore(s => s.setFilterFreq);
