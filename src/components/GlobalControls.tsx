@@ -9,11 +9,9 @@ const PURPLE = '#9C27B0';
 export function GlobalControls() {
   const bpm = useStore(s => s.bpm);
   const volume = useStore(s => s.volume);
-  const filterFreq = useStore(s => s.filterFreq);
   const swing = useStore(s => s.swing);
   const setBpm = useStore(s => s.setBpm);
   const setVolume = useStore(s => s.setVolume);
-  const setFilterFreq = useStore(s => s.setFilterFreq);
   const setSwing = useStore(s => s.setSwing);
   const setPlaying = useStore(s => s.setPlaying);
 
@@ -31,7 +29,7 @@ export function GlobalControls() {
   };
 
   return (
-    <RoughPanel color={PURPLE} padding={16} style={{ width: '100%', maxWidth: 900 }}>
+    <RoughPanel color={PURPLE} padding={10} style={{ width: '100%' }}>
       <div className="global-controls">
         <Knob
           value={bpmKnob}
@@ -53,17 +51,6 @@ export function GlobalControls() {
           color={PURPLE}
           label="Volume"
           displayValue={`${Math.round(volume * 100)}%`}
-        />
-        <Knob
-          value={filterFreq}
-          onChange={v => {
-            setFilterFreq(v);
-            audioEngine.setFilter(v);
-          }}
-          color={PURPLE}
-          label="Filter"
-          displayValue={`${Math.round(200 + filterFreq * 19800)}Hz`}
-          sensitivity={0.003}
         />
         <Knob
           value={swing}

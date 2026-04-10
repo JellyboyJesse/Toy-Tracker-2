@@ -31,6 +31,7 @@ export function RoughPanel({
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSize = useRef({ width: 0, height: 0 });
 
   const draw = useCallback(() => {
     const wrap = wrapRef.current;
@@ -39,11 +40,18 @@ export function RoughPanel({
     const { width, height } = wrap.getBoundingClientRect();
     if (width === 0 || height === 0) return;
 
+    // Skip redraw if dimensions haven't changed by more than 2px
+    if (
+      Math.abs(width - lastSize.current.width) <= 2 &&
+      Math.abs(height - lastSize.current.height) <= 2 &&
+      lastSize.current.width > 0
+    ) return;
+    lastSize.current = { width, height };
+
     svg.setAttribute('width', String(width));
     svg.setAttribute('height', String(height));
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
-    // Clear previous
     while (svg.firstChild) svg.removeChild(svg.firstChild);
 
     const rc = rough.svg(svg);
@@ -63,6 +71,8 @@ export function RoughPanel({
   }, [color, roughness, fillStyle, fill, hachureGap, hachureAngle, strokeWidth]);
 
   useEffect(() => {
+    // Reset threshold when draw params change so color/style updates always render
+    lastSize.current = { width: 0, height: 0 };
     draw();
     const observer = new ResizeObserver(() => {
       if (timerRef.current) clearTimeout(timerRef.current);

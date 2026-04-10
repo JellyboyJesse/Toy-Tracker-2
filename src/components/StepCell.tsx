@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, memo } from 'react';
+import { useRef, useEffect, useCallback, memo } from 'react';
 import rough from 'roughjs';
 import type { InstrumentType, EffectCode } from '@/store/types';
 
@@ -14,20 +14,47 @@ const INST_SHORT: Record<InstrumentType, string> = {
 const EFFECTS: (EffectCode | null)[] = [null, 'V', 'P', 'D', 'C'];
 const EFFECT_NAMES: Record<string, string> = { V: 'Vol', P: 'Pch', D: 'Dly', C: 'Cut' };
 
-// Shared rough cell border — drawn once per (color, active)
+// Chromatic note cycling
+const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const OCTAVES = [2, 3, 4, 5, 6, 7];
+const NOTE_SEQ = ['---', ...OCTAVES.flatMap(oct => NOTES.map(n => `${n}${oct}`))];
+
+function cycleNote(current: string, delta: 1 | -1): string {
+  const idx = NOTE_SEQ.indexOf(current);
+  const base = idx < 0 ? 0 : idx;
+  return NOTE_SEQ[(base + delta + NOTE_SEQ.length) % NOTE_SEQ.length];
+}
+
+// Dynamic cell border — measures actual container dimensions via ResizeObserver
 function useCellBorder(
+  containerRef: React.RefObject<HTMLDivElement | null>,
   svgRef: React.RefObject<SVGSVGElement | null>,
   color: string,
   active: boolean,
-  width: number,
-  height: number
+  seed: number
 ) {
-  useEffect(() => {
+  const lastSize = useRef({ w: 0, h: 0 });
+
+  const draw = useCallback(() => {
+    const container = containerRef.current;
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!container || !svg) return;
+    const { width, height } = container.getBoundingClientRect();
+    if (width < 4 || height < 4) return;
+    if (
+      Math.abs(width - lastSize.current.w) <= 2 &&
+      Math.abs(height - lastSize.current.h) <= 2 &&
+      lastSize.current.w > 0
+    ) return;
+    lastSize.current = { w: width, h: height };
+
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(height));
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     while (svg.firstChild) svg.removeChild(svg.firstChild);
+
     const rc = rough.svg(svg);
-    const rect = rc.rectangle(1, 1, width - 2, height - 2, {
+    svg.appendChild(rc.rectangle(1, 1, width - 2, height - 2, {
       roughness: 1.2,
       bowing: 0.5,
       strokeWidth: active ? 2 : 1,
@@ -37,9 +64,18 @@ function useCellBorder(
       fillWeight: 0.8,
       hachureGap: 8,
       hachureAngle: 30,
-    });
-    svg.appendChild(rect);
-  }, [svgRef, color, active, width, height]);
+      seed,
+    }));
+  }, [containerRef, svgRef, color, active, seed]);
+
+  useEffect(() => {
+    // Reset size threshold so color/active changes always trigger a redraw
+    lastSize.current = { w: 0, h: 0 };
+    draw();
+    const observer = new ResizeObserver(draw);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [draw, containerRef]);
 }
 
 // ─── Note Cell ───────────────────────────────────────────────────────────────
@@ -47,58 +83,39 @@ function useCellBorder(
 interface NoteCellProps {
   note: string;
   color: string;
-  isActive: boolean;
+  isActive?: boolean;
   onChange: (note: string) => void;
 }
 
-export const NoteCell = memo(function NoteCell({ note, color, isActive, onChange }: NoteCellProps) {
+export const NoteCell = memo(function NoteCell({ note, color, onChange }: NoteCellProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(note);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const seed = useRef(Math.floor(Math.random() * 10000)).current;
   const filled = note !== '---';
 
-  useCellBorder(svgRef, color, filled, 54, 28);
+  useCellBorder(containerRef, svgRef, color, filled, seed);
 
-  const commit = useCallback(() => {
-    const val = draft.trim().toUpperCase();
-    onChange(val || '---');
-    setEditing(false);
-  }, [draft, onChange]);
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    onChange(cycleNote(note, 1));
+  }, [note, onChange]);
 
-  useEffect(() => {
-    if (editing) {
-      setDraft(note === '---' ? '' : note);
-      setTimeout(() => inputRef.current?.select(), 0);
-    }
-  }, [editing, note]);
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    onChange(cycleNote(note, -1));
+  }, [note, onChange]);
 
   return (
     <div
-      className={`step-cell${isActive ? ' active-step' : ''}`}
+      ref={containerRef}
+      className="step-cell"
       style={{ color: filled ? color : '#ccc' }}
-      onClick={() => setEditing(true)}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
     >
-      <svg ref={svgRef} className="cell-border" width={54} height={28} />
+      <svg ref={svgRef} className="cell-border" aria-hidden />
       <div className="cell-content">
-        {editing ? (
-          <input
-            ref={inputRef}
-            className="cell-input"
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === 'Tab') commit();
-              if (e.key === 'Escape') { setEditing(false); }
-            }}
-            maxLength={4}
-            placeholder="---"
-            style={{ color: color }}
-          />
-        ) : (
-          <span>{note}</span>
-        )}
+        <span>{note}</span>
       </div>
     </div>
   );
@@ -109,15 +126,16 @@ export const NoteCell = memo(function NoteCell({ note, color, isActive, onChange
 interface InstrumentCellProps {
   instrument: InstrumentType;
   color: string;
-  isActive: boolean;
+  isActive?: boolean;
   onChange: (inst: InstrumentType) => void;
 }
 
-export const InstrumentCell = memo(function InstrumentCell({ instrument, color, isActive, onChange }: InstrumentCellProps) {
+export const InstrumentCell = memo(function InstrumentCell({ instrument, color, onChange }: InstrumentCellProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const filled = true;
+  const seed = useRef(Math.floor(Math.random() * 10000)).current;
 
-  useCellBorder(svgRef, color, filled, 54, 28);
+  useCellBorder(containerRef, svgRef, color, true, seed);
 
   const cycle = useCallback(() => {
     const idx = INSTRUMENTS.indexOf(instrument);
@@ -126,11 +144,12 @@ export const InstrumentCell = memo(function InstrumentCell({ instrument, color, 
 
   return (
     <div
-      className={`step-cell${isActive ? ' active-step' : ''}`}
+      ref={containerRef}
+      className="step-cell"
       style={{ color }}
       onClick={cycle}
     >
-      <svg ref={svgRef} className="cell-border" width={54} height={28} />
+      <svg ref={svgRef} className="cell-border" aria-hidden />
       <div className="cell-content">
         <span>{INST_SHORT[instrument]}</span>
       </div>
@@ -143,15 +162,17 @@ export const InstrumentCell = memo(function InstrumentCell({ instrument, color, 
 interface EffectCellProps {
   effect: EffectCode | null;
   color: string;
-  isActive: boolean;
+  isActive?: boolean;
   onChange: (eff: EffectCode | null) => void;
 }
 
-export const EffectCell = memo(function EffectCell({ effect, color, isActive, onChange }: EffectCellProps) {
+export const EffectCell = memo(function EffectCell({ effect, color, onChange }: EffectCellProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const seed = useRef(Math.floor(Math.random() * 10000)).current;
   const filled = effect !== null;
 
-  useCellBorder(svgRef, color, filled, 54, 28);
+  useCellBorder(containerRef, svgRef, color, filled, seed);
 
   const cycle = useCallback(() => {
     const idx = EFFECTS.indexOf(effect);
@@ -160,11 +181,12 @@ export const EffectCell = memo(function EffectCell({ effect, color, isActive, on
 
   return (
     <div
-      className={`step-cell${isActive ? ' active-step' : ''}`}
+      ref={containerRef}
+      className="step-cell"
       style={{ color: filled ? color : '#ccc' }}
       onClick={cycle}
     >
-      <svg ref={svgRef} className="cell-border" width={54} height={28} />
+      <svg ref={svgRef} className="cell-border" aria-hidden />
       <div className="cell-content">
         <span>{effect ? EFFECT_NAMES[effect] : '---'}</span>
       </div>
@@ -177,58 +199,42 @@ export const EffectCell = memo(function EffectCell({ effect, color, isActive, on
 interface EffectValueCellProps {
   value: number;
   color: string;
-  isActive: boolean;
+  isActive?: boolean;
   disabled: boolean;
   onChange: (v: number) => void;
 }
 
-export const EffectValueCell = memo(function EffectValueCell({ value, color, isActive, disabled, onChange }: EffectValueCellProps) {
+export const EffectValueCell = memo(function EffectValueCell({ value, color, disabled, onChange }: EffectValueCellProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value));
-  const inputRef = useRef<HTMLInputElement>(null);
+  const seed = useRef(Math.floor(Math.random() * 10000)).current;
   const filled = !disabled && value > 0;
 
-  useCellBorder(svgRef, color, filled, 54, 28);
+  useCellBorder(containerRef, svgRef, color, filled, seed);
 
-  const commit = useCallback(() => {
-    const n = parseInt(draft, 10);
-    onChange(isNaN(n) ? 0 : Math.max(0, Math.min(255, n)));
-    setEditing(false);
-  }, [draft, onChange]);
+  // Click cycles value by 16 steps (0→16→32→…→255→0)
+  const cycle = useCallback(() => {
+    if (disabled) return;
+    onChange((value + 16) > 255 ? 0 : value + 16);
+  }, [disabled, value, onChange]);
 
-  useEffect(() => {
-    if (editing) {
-      setDraft(String(value));
-      setTimeout(() => inputRef.current?.select(), 0);
-    }
-  }, [editing, value]);
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (disabled) return;
+    onChange(value >= 16 ? value - 16 : 255 - ((255 - value) % 16));
+  }, [disabled, value, onChange]);
 
   return (
     <div
-      className={`step-cell${isActive ? ' active-step' : ''}`}
+      ref={containerRef}
+      className="step-cell"
       style={{ color: disabled ? '#ccc' : filled ? color : '#888' }}
-      onClick={() => !disabled && setEditing(true)}
+      onClick={cycle}
+      onContextMenu={handleContextMenu}
     >
-      <svg ref={svgRef} className="cell-border" width={54} height={28} />
+      <svg ref={svgRef} className="cell-border" aria-hidden />
       <div className="cell-content">
-        {editing ? (
-          <input
-            ref={inputRef}
-            className="cell-input"
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === 'Tab') commit();
-              if (e.key === 'Escape') setEditing(false);
-            }}
-            maxLength={3}
-            style={{ color }}
-          />
-        ) : (
-          <span>{disabled ? '---' : value.toString().padStart(3, '0')}</span>
-        )}
+        <span>{disabled ? '---' : value.toString().padStart(3, '0')}</span>
       </div>
     </div>
   );
@@ -239,15 +245,17 @@ export const EffectValueCell = memo(function EffectValueCell({ value, color, isA
 interface RepeatCellProps {
   repeat: number;
   color: string;
-  isActive: boolean;
+  isActive?: boolean;
   onChange: (r: number) => void;
 }
 
-export const RepeatCell = memo(function RepeatCell({ repeat, color, isActive, onChange }: RepeatCellProps) {
+export const RepeatCell = memo(function RepeatCell({ repeat, color, onChange }: RepeatCellProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const seed = useRef(Math.floor(Math.random() * 10000)).current;
   const filled = repeat > 1;
 
-  useCellBorder(svgRef, color, filled, 54, 28);
+  useCellBorder(containerRef, svgRef, color, filled, seed);
 
   const cycle = useCallback(() => {
     onChange(repeat >= 8 ? 1 : repeat + 1);
@@ -255,11 +263,12 @@ export const RepeatCell = memo(function RepeatCell({ repeat, color, isActive, on
 
   return (
     <div
-      className={`step-cell${isActive ? ' active-step' : ''}`}
+      ref={containerRef}
+      className="step-cell"
       style={{ color: filled ? color : '#ccc' }}
       onClick={cycle}
     >
-      <svg ref={svgRef} className="cell-border" width={54} height={28} />
+      <svg ref={svgRef} className="cell-border" aria-hidden />
       <div className="cell-content">
         <span>{repeat > 1 ? `×${repeat}` : '×1'}</span>
       </div>

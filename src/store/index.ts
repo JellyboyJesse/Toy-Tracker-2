@@ -60,17 +60,14 @@ const initialState: AppState = {
   playing: false,
   bpm: 120,
   volume: 0.8,
-  filterFreq: 0.8,
   swing: 0,
   activeSteps: [0, 0, 0, 0],
-  ballPositions: [0, 0, 0, 0],
 };
 
 interface Actions {
   setPlaying: (playing: boolean) => void;
   setBpm: (bpm: number) => void;
   setVolume: (volume: number) => void;
-  setFilterFreq: (freq: number) => void;
   setSwing: (swing: number) => void;
   setTrackVolume: (trackId: number, volume: number) => void;
   setTrackTempo: (trackId: number, tempo: number) => void;
@@ -84,7 +81,6 @@ interface Actions {
   setStepEffectValue: (trackId: number, stepIndex: number, value: number) => void;
   setStepRepeat: (trackId: number, stepIndex: number, repeat: number) => void;
   setActiveStep: (trackId: number, step: number) => void;
-  setBallPosition: (trackId: number, position: number) => void;
 }
 
 export const useStore = create<AppState & Actions>()(
@@ -94,7 +90,6 @@ export const useStore = create<AppState & Actions>()(
     setPlaying: (playing) => set((s) => { s.playing = playing; }),
     setBpm: (bpm) => set((s) => { s.bpm = bpm; }),
     setVolume: (volume) => set((s) => { s.volume = volume; }),
-    setFilterFreq: (freq) => set((s) => { s.filterFreq = freq; }),
     setSwing: (swing) => set((s) => { s.swing = swing; }),
 
     setTrackVolume: (trackId, volume) => set((s) => { s.tracks[trackId].volume = volume; }),
@@ -128,6 +123,5 @@ export const useStore = create<AppState & Actions>()(
     }),
 
     setActiveStep: (trackId, step) => set((s) => { s.activeSteps[trackId] = step; }),
-    setBallPosition: (trackId, position) => set((s) => { s.ballPositions[trackId] = position; }),
   }))
 );

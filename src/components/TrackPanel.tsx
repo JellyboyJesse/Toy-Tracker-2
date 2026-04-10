@@ -2,7 +2,6 @@ import { useState, useCallback, useRef } from 'react';
 import { RoughPanel } from './RoughPanel';
 import { Knob } from './Knob';
 import { StepGrid } from './StepGrid';
-import { BallPlayhead } from './BallPlayhead';
 import { useStore } from '@/store';
 import { audioEngine } from '@/audio/AudioEngine';
 import type { Track } from '@/store/types';
@@ -17,8 +16,6 @@ interface TrackPanelProps {
 export function TrackPanel({ track, activeStep }: TrackPanelProps) {
   const setTrackVolume = useStore(s => s.setTrackVolume);
   const setTrackTempo = useStore(s => s.setTrackTempo);
-  const setTrackBounce = useStore(s => s.setTrackBounce);
-  const setTrackBounceDirection = useStore(s => s.setTrackBounceDirection);
   const setTrackSample = useStore(s => s.setTrackSample);
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -51,11 +48,11 @@ export function TrackPanel({ track, activeStep }: TrackPanelProps) {
     [track.id, setTrackSample]
   );
 
-  const tempoDisplay = `${track.tempo.toFixed(2)}×`;
   const bpmKnobValue = (track.tempo - 0.25) / (4 - 0.25);
+  const tempoDisplay = `${track.tempo.toFixed(2)}×`;
 
   return (
-    <RoughPanel color={track.color} padding={16} style={{ width: '100%' }}>
+    <RoughPanel color={track.color} padding={10} className="track-panel">
       {/* Header */}
       <div className="track-header">
         <div className="track-label crayon-text" style={{ color: track.color }}>
@@ -82,40 +79,6 @@ export function TrackPanel({ track, activeStep }: TrackPanelProps) {
             label="Tempo"
             displayValue={tempoDisplay}
           />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <Knob
-              value={track.bounce}
-              onChange={v => {
-                setTrackBounce(track.id, v);
-                audioEngine.updateTrackBounce(track.id);
-              }}
-              color={track.color}
-              label="Bounce"
-              displayValue={`${Math.round(track.bounce * 100)}%`}
-            />
-            <div style={{ display: 'flex', gap: 2 }}>
-              <button
-                className={`bounce-dir-btn${track.bounceDirection === 'forward' ? ' active' : ''}`}
-                style={{ color: track.bounceDirection === 'forward' ? track.color : undefined }}
-                onClick={() => {
-                setTrackBounceDirection(track.id, 'forward');
-                audioEngine.updateTrackBounce(track.id);
-              }}
-              >
-                ▶ fwd
-              </button>
-              <button
-                className={`bounce-dir-btn${track.bounceDirection === 'reverse' ? ' active' : ''}`}
-                style={{ color: track.bounceDirection === 'reverse' ? track.color : undefined }}
-                onClick={() => {
-                setTrackBounceDirection(track.id, 'reverse');
-                audioEngine.updateTrackBounce(track.id);
-              }}
-              >
-                rev ◀
-              </button>
-            </div>
-          </div>
         </div>
         {track.sampleName && (
           <div className="sample-name" style={{ color: track.color }}>
@@ -124,7 +87,7 @@ export function TrackPanel({ track, activeStep }: TrackPanelProps) {
         )}
       </div>
 
-      {/* Grid body with ball playhead */}
+      {/* Grid body */}
       <div
         className="track-body"
         ref={dropRef}
@@ -132,7 +95,6 @@ export function TrackPanel({ track, activeStep }: TrackPanelProps) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <BallPlayhead trackId={track.id} color={track.color} bounce={track.bounce} />
         <StepGrid
           trackId={track.id}
           color={track.color}

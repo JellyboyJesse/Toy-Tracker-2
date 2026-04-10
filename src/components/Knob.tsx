@@ -29,17 +29,21 @@ function arcPath(startDeg: number, endDeg: number, r: number): string {
 
 interface RoughCircleProps {
   color: string;
+  size: number;
 }
 
-const RoughCircle = memo(function RoughCircle({ color }: RoughCircleProps) {
+const RoughCircle = memo(function RoughCircle({ color, size }: RoughCircleProps) {
   const svgRef = useRef<SVGGElement>(null);
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = (size / 64) * R;
 
   useEffect(() => {
     const g = svgRef.current;
     if (!g) return;
     const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     const rc = rough.svg(tempSvg);
-    const circle = rc.circle(CX, CY, R * 2, {
+    const circle = rc.circle(cx, cy, r * 2, {
       roughness: 2.5,
       strokeWidth: 2,
       stroke: color,
@@ -48,7 +52,7 @@ const RoughCircle = memo(function RoughCircle({ color }: RoughCircleProps) {
     while (g.firstChild) g.removeChild(g.firstChild);
     const cloned = circle.cloneNode(true) as SVGGElement;
     Array.from(cloned.childNodes).forEach(n => g.appendChild(n));
-  }, [color]);
+  }, [color, cx, cy, r]);
 
   return <g ref={svgRef} />;
 });
@@ -60,9 +64,10 @@ interface KnobProps {
   label: string;
   displayValue?: string;
   sensitivity?: number;
+  size?: number;
 }
 
-export function Knob({ value, onChange, color = '#9C27B0', label, displayValue, sensitivity }: KnobProps) {
+export function Knob({ value, onChange, color = '#9C27B0', label, displayValue, sensitivity, size = SIZE }: KnobProps) {
   const { onPointerDown, onPointerMove } = useKnobDrag(value, onChange, sensitivity);
 
   // Needle rotation from 12 o'clock: -135° at min, +135° at max
@@ -71,6 +76,7 @@ export function Knob({ value, onChange, color = '#9C27B0', label, displayValue, 
   // Arc end angle for value arc (clockwise from MIN_SVG)
   const valueEndSVG = MIN_SVG + value * SWEEP;
 
+  // Keep coordinate space fixed at SIZE×SIZE; width/height scale the render
   const arcRange = useMemo(
     () => arcPath(MIN_SVG, MIN_SVG + SWEEP, R - 4),
     []
@@ -84,14 +90,14 @@ export function Knob({ value, onChange, color = '#9C27B0', label, displayValue, 
     <div className="knob-wrap">
       <svg
         className="knob-svg"
-        width={SIZE}
-        height={SIZE}
+        width={size}
+        height={size}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         style={{ filter: 'url(#crayon-grain)' }}
       >
-        <RoughCircle color={color} />
+        <RoughCircle color={color} size={SIZE} />
 
         {/* Range arc (gray background) */}
         <path d={arcRange} fill="none" stroke="#ccc" strokeWidth={2} strokeLinecap="round" />

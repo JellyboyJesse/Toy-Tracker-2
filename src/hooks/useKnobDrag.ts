@@ -7,6 +7,7 @@ export function useKnobDrag(
 ) {
   const startY = useRef(0);
   const startValue = useRef(0);
+  const lastDispatch = useRef(0);
 
   const onPointerDown = useCallback(
     (e: PointerEvent<SVGSVGElement>) => {
@@ -21,6 +22,9 @@ export function useKnobDrag(
   const onPointerMove = useCallback(
     (e: PointerEvent<SVGSVGElement>) => {
       if (e.buttons === 0) return;
+      const now = performance.now();
+      if (now - lastDispatch.current < 16) return;
+      lastDispatch.current = now;
       const delta = startY.current - e.clientY;
       const next = Math.max(0, Math.min(1, startValue.current + delta * sensitivity));
       onChange(next);

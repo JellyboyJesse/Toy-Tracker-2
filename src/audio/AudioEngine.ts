@@ -17,7 +17,6 @@ interface TrackEngine {
 class AudioEngine {
   private started = false;
   private masterGain: Tone.Gain | null = null;
-  private filter: Tone.AutoFilter | null = null;
   private tracks: TrackEngine[] = [];
   private swing = 0;
 
@@ -30,10 +29,7 @@ class AudioEngine {
 
   private buildGraph() {
     this.masterGain = new Tone.Gain(useStore.getState().volume);
-    this.filter = new Tone.AutoFilter({ frequency: 0.1, depth: 0 }).start();
-    this.masterGain.connect(this.filter);
-    this.filter.toDestination();
-    this.setFilter(useStore.getState().filterFreq);
+    this.masterGain.toDestination();
 
     for (let id = 0; id < 4; id++) {
       const gain = new Tone.Gain(useStore.getState().tracks[id].volume);
@@ -92,7 +88,6 @@ class AudioEngine {
     const offsets = computeBounceOffsets(track.bounce, track.bounceDirection, loopDuration, this.swing);
     const durations = computeStepDurations(offsets, loopDuration);
 
-    // Tone.Part expects an array of [time, value] pairs
     const events: Array<{ time: number; stepIndex: number; duration: number }> = offsets.map(
       (t, i) => ({ time: t, stepIndex: i, duration: durations[i] })
     );
@@ -110,10 +105,11 @@ class AudioEngine {
         if (step.note === '---') return;
 
         const repeat = Math.max(1, Math.min(8, step.repeat));
-        const noteDuration = (ev.duration / repeat) * 0.8;
+        const slotDuration = ev.duration;
+        const noteDuration = Math.max(0.02, (slotDuration / repeat) * 0.8);
 
         for (let r = 0; r < repeat; r++) {
-          const t = time + (r / repeat) * ev.duration;
+          const t = time + (r / repeat) * slotDuration;
           this.triggerStep(trackId, step.note, step.instrument, noteDuration, t);
         }
       },
@@ -180,12 +176,6 @@ class AudioEngine {
 
   setMasterVolume(v: number) {
     this.masterGain?.gain.rampTo(v, 0.05);
-  }
-
-  setFilter(v: number) {
-    if (!this.filter) return;
-    const hz = 200 * Math.pow(100, v);
-    this.filter.baseFrequency = Math.min(hz, 20000);
   }
 
   setSwing(swing: number) {

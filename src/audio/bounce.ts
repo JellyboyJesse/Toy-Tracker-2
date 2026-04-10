@@ -1,8 +1,8 @@
 /**
  * Compute the 16 absolute step start times within a loop of `loopDuration` seconds.
  * bounce=0 → uniform spacing
- * bounce=1 + forward → early steps wider, late steps compressed (ball slows down)
- * bounce=1 + reverse → early steps compressed, late steps wider (ball speeds up)
+ * forward: ease-out — wide early gaps narrowing toward end (ball decelerates)
+ * reverse: ease-in  — narrow early gaps widening toward end (ball accelerates)
  * Swing nudges even-indexed steps slightly later.
  */
 export function computeBounceOffsets(
@@ -12,26 +12,21 @@ export function computeBounceOffsets(
   swing: number
 ): number[] {
   const n = 16;
-  // Compute normalised cumulative positions [0, 1] for each step start
+  const exponent = 1 + bounce * 4;
+
+  // Monotonically increasing positions [0..1] for each step start
   const positions = Array.from({ length: n }, (_, i) => {
     const t = i / (n - 1); // 0 → 1
-    let eased: number;
-    if (bounce === 0) {
-      eased = t;
-    } else {
-      // Exponential ease-in (compress tail) — forward
-      eased = 1 - Math.pow(1 - t, 1 + bounce * 4);
-    }
-    return direction === 'forward' ? eased : 1 - eased;
+    if (bounce === 0) return t;
+    // forward: ease-out (1-(1-t)^E) — rushes early, slows at end
+    // reverse: ease-in (t^E)        — slow start, rushes at end
+    return direction === 'forward'
+      ? 1 - Math.pow(1 - t, exponent)
+      : Math.pow(t, exponent);
   });
 
-  // Re-sort so positions are always ascending (reverse flips them)
-  const sorted = direction === 'reverse'
-    ? positions.map((_, i) => 1 - positions[n - 1 - i])
-    : positions;
-
-  // Convert to absolute times
-  const times = sorted.map(p => p * loopDuration);
+  // Convert normalised positions to absolute times
+  const times = positions.map(p => p * loopDuration);
 
   // Apply swing: nudge even-indexed steps (0,2,4…) slightly later
   if (swing > 0) {

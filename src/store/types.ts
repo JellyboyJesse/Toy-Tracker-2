@@ -1,21 +1,21 @@
 export type InstrumentType = 'PolySynth' | 'FMSynth' | 'AMSynth' | 'MembraneSynth' | 'PluckSynth' | 'Sample';
-export type EffectCode = 'V' | 'P' | 'D' | 'C'; // volume, pitch, delay, cutoff
+export type EffectCode = 'V' | 'P' | 'D' | 'C';
 
 export interface Step {
-  note: string; // 'C4', 'D#3', '---'
+  note: string;
   instrument: InstrumentType;
   effect: EffectCode | null;
-  effectValue: number; // 0-255
-  repeat: number; // 1 = normal, 2-8 = stutter
+  effectValue: number;
+  repeat: number; // 1–8
 }
 
 export interface Track {
   id: 0 | 1 | 2 | 3;
   color: string;
   steps: Step[];
-  volume: number; // 0-1
-  tempo: number; // playbackRate multiplier 0.25-4
-  bounce: number; // 0-1
+  volume: number;
+  tempo: number;
+  bounce: number;
   bounceDirection: 'forward' | 'reverse';
   sampleBuffer: AudioBuffer | null;
   sampleName: string | null;
@@ -24,10 +24,8 @@ export interface Track {
 export interface AppState {
   tracks: Track[];
   playing: boolean;
-  bpm: number; // 60-200
-  volume: number; // 0-1
-  filterFreq: number; // 0-1
-  swing: number; // 0-1
+  bpm: number;
+  volume: number;
+  swing: number;
   activeSteps: [number, number, number, number];
-  ballPositions: [number, number, number, number];
 }
